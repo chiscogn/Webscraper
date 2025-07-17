@@ -1,3 +1,11 @@
+const express = require('express');
+const { chromium } = require('playwright');
+const app = express();
+
+app.get('/', (req, res) => {
+  res.send('Welcome to the Walmart Scraper! Use /scrape?q=your+query to scrape products.');
+});
+
 app.get('/scrape', async (req, res) => {
   const query = req.query.q || 'laptop';
   const url = `https://www.walmart.com/search?q=${encodeURIComponent(query)}`;
@@ -7,15 +15,12 @@ app.get('/scrape', async (req, res) => {
     browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
     const page = await browser.newPage();
 
-    // Set realistic User-Agent to mimic a real browser
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
       '(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
     );
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-
-    // Wait a bit more to allow any dynamic content or anti-bot scripts to run
     await page.waitForTimeout(3000);
 
     const data = await page.evaluate(() => {
@@ -28,7 +33,6 @@ app.get('/scrape', async (req, res) => {
     });
 
     console.log('Scraped data:', data);
-
     res.json(data);
   } catch (error) {
     console.error('Scraping failed:', error);
@@ -36,4 +40,9 @@ app.get('/scrape', async (req, res) => {
   } finally {
     if (browser) await browser.close();
   }
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
