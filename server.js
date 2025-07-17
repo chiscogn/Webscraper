@@ -2,28 +2,40 @@ const express = require('express');
 const { chromium } = require('playwright');
 const app = express();
 
+app.get('/', (req, res) => {
+  res.send('Welcome to the Walmart Scraper! Use /scrape?q=your+query to scrape products.');
+});
+
 app.get('/scrape', async (req, res) => {
   const query = req.query.q || 'laptop';
   const url = `https://www.walmart.com/search?q=${encodeURIComponent(query)}`;
 
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+    const page = await browser.newPage();
 
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-  const data = await page.evaluate(() => {
-    const items = document.querySelectorAll('[data-item-id]');
-    return Array.from(items).slice(0, 10).map(item => {
-      const title = item.querySelector('[data-automation-id="product-title"]')?.innerText || '';
-      const price = item.querySelector('[data-automation-id="product-price"]')?.innerText || '';
-      return { title, price };
+    const data = await page.evaluate(() => {
+      const items = document.querySelectorAll('[data-item-id]');
+      return Array.from(items).slice(0, 10).map(item => {
+        const title = item.querySelector('[data-automation-id="product-title"]')?.innerText || '';
+        const price = item.querySelector('[data-automation-id="product-price"]')?.innerText || '';
+        return { title, price };
+      });
     });
-  });
 
-  await browser.close();
-  res.json(data);
+    res.json(data);
+  } catch (error) {
+    console.error('Scraping failed:', error);
+    res.status(500).json({ error: 'Failed to scrape Walmart.' });
+  } finally {
+    if (browser) await browser.close();
+  }
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log('Server is running...');
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
