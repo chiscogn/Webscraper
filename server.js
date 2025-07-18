@@ -13,12 +13,14 @@ app.get('/scrape', async (req, res) => {
   let browser;
   try {
     browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
-    const page = await browser.newPage();
 
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
-      '(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-    );
+    const context = await browser.newContext({
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+        '(KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+    });
+
+    const page = await context.newPage();
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
     await page.waitForTimeout(3000);
